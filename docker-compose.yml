@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # FastAPI Custom Claims Provider Backend
+  custom-claims-api:
+    build: 
+      context: ./Custom-Claims-Back-end
+      dockerfile: Dockerfile
+    container_name: custom-claims-provider-api
+    ports:
+      - "8000:8000"
+    environment:
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-your-client-id}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-b8e62cd3-6661-4faa-91f3-ffe016db96e8}
+      - ENVIRONMENT=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    volumes:
+      - ./Custom-Claims-Back-end/logs:/app/logs
+      - ./Custom-Claims-Back-end:/app  # Hot reload for development
+    networks:
+      - custom-claims-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Frontend Server
+  frontend:
+    image: nginx:alpine
+    container_name: custom-claims-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./Custom-Claims-Front-end/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./Custom-Claims-Front-end/test.html:/usr/share/nginx/html/index.html:ro
+      - ./Custom-Claims-Front-end/frontend-integration.js:/usr/share/nginx/html/frontend-integration.js:ro
+      - ./Custom-Claims-Front-end/static:/usr/share/nginx/html/static:ro
+    networks:
+      - custom-claims-network
+    depends_on:
+      - custom-claims-api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ngrok for public API exposure (required for Microsoft Entra callbacks)
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: custom-claims-ngrok
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: 
+      - "http"
+      - "custom-claims-api:8000"
+      - "--log=stdout"
+      - "--authtoken=${NGROK_AUTHTOKEN}"
+    ports:
+      - "4040:4040"  # Ngrok web dashboard
+    networks:
+      - custom-claims-network
+    depends_on:
+      - custom-claims-api
+    restart: unless-stopped
+
+  # Redis for temporary data storage
+  redis:
+    image: redis:7-alpine
+    container_name: custom-claims-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - custom-claims-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  custom-claims-network:
+    driver: bridge
+    name: custom-claims-network
+
+volumes:
+  redis_data:
+    driver: local

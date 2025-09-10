@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Claims Provider Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        
+        .section h2 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+        
+        .info { border-left-color: #17a2b8; }
+        .success { border-left-color: #28a745; }
+        .warning { border-left-color: #ffc107; }
+        .error { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Custom Claims Provider Test</h1>
+        
+        <!-- Connection Test Section -->
+        <div class="section">
+            <h2>1. Test API Connection</h2>
+            <p>First, verify that your FastAPI server is running:</p>
+            <button id="test-connection" type="button">Test Connection</button>
+            <div id="connection-status" class="status"></div>
+        </div>
+
+        <!-- Authentication Form Section -->
+        <div class="section">
+            <h2>2. Authentication with Custom Claims</h2>
+            <form id="auth-form">
+                <div class="form-group">
+                    <label for="email">User Email (for identification):</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="user@example.com">
+                    <small>This should match the email you'll use to login to Entra</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="businessUnit">Business Unit:</label>
+                    <select id="businessUnit" name="businessUnit" required>
+                        <option value="">Select Business Unit</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="HR">Human Resources</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Operations">Operations</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="customData">Custom Data:</label>
+                    <textarea id="customData" name="customData" rows="3" 
+                              placeholder="Any custom information you want to include in the token..."></textarea>
+                </div>
+
+                <button type="submit">🚀 Start Authentication with Custom Claims</button>
+            </form>
+        </div>
+
+        <!-- Token Display Section -->
+        <div class="section">
+            <h2>3. Authentication Results</h2>
+            <div id="custom-claims-display">
+                <p>Custom claims will appear here after successful authentication.</p>
+            </div>
+        </div>
+
+        <!-- Debug Section -->
+        <div class="section">
+            <h2>4. Debug Information</h2>
+            <button onclick="viewStoredData()">View Stored Data</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+            
+            <h3>Console Logs:</h3>
+            <div id="console-logs" class="log-container">
+                <div class="log-entry info">Ready to test Custom Claims Provider...</div>
+            </div>
+        </div>
+
+        <!-- Instructions Section -->
+        <div class="section">
+            <h2>📝 How it works</h2>
+            <ol>
+                <li><strong>Store Frontend Data:</strong> Before authentication, your frontend data is sent to the FastAPI server</li>
+                <li><strong>Redirect to Entra:</strong> User is redirected to Microsoft Entra for authentication</li>
+                <li><strong>Custom Claims Injection:</strong> During token issuance, Entra calls your FastAPI endpoint</li>
+                <li><strong>Claims Added:</strong> Your stored frontend data is injected into the token as custom claims</li>
+                <li><strong>Token Received:</strong> The ID token now contains your custom claims from the frontend</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to also display in the page
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function addLogEntry(message, type = 'info') {
+            const logsContainer = document.getElementById('console-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        // Override console methods to display logs on page
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLogEntry(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLogEntry(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLogEntry(args.join(' '), 'warning');
+        };
+
+        // Custom Claims Integration Class
+        class CustomClaimsIntegration {
+            constructor(apiBaseUrl = 'http://localhost:8000') {
+                this.apiBaseUrl = apiBaseUrl;
+                this.authUrl = "https://login.microsoftonline.com/b8e62cd3-6661-4faa-91f3-ffe016db96e8/oauth2/v2.0/authorize";
+                this.clientId = "813cd2eb-5858-4f25-b0bc-c13602fc6e7f";
+                this.redirectUri = "http://localhost:3000/auth/callback";
+            }
+
+            // Main method to start authentication with custom claims
+            async authenticateWithCustomClaims(userEmail, frontendData) {
+                try {
+                    console.log('🚀 Starting authentication with custom claims...');
+                    
+                    const success = await this.storeFrontendData(userEmail, frontendData);
+                    
+                    if (success) {
+                        this.redirectToAuth();
+                    } else {
+                        throw new Error('Failed to store frontend data');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error in authentication process:', error);
+                    alert('Error starting authentication. Please try again.');
+                }
+            }
+
+            // Store frontend data before authentication
+            async storeFrontendData(userEmail, frontendData) {
+                try {
+                    const payload = {
+                        user_id: userEmail,
+                        business_unit: frontendData.businessUnit || 'Unknown',
+                        device_info: this.getDeviceInfo(),
+                        custom_data: frontendData.customData || '',
+                        timestamp: Date.now() / 1000
+                    };
+
+                    console.log('📤 Sending frontend data:', JSON.stringify(payload, null, 2));
+
+                    const response = await fetch(`${this.apiBaseUrl}/api/store-frontend-data`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('✅ Frontend data stored successfully:', JSON.stringify(result, null, 2));
+                    return true;
+
+                } catch (error) {
+                    console.error('❌ Error storing frontend data:', error);
+                    return false;
+                }
+            }
+
+            // Get device/browser information
+            getDeviceInfo() {
+                const userAgent = navigator.userAgent;
+                let deviceInfo = 'Unknown';
+
+                if (userAgent.includes('Chrome')) deviceInfo = 'Chrome';
+                else if (userAgent.includes('Firefox')) deviceInfo = 'Firefox';
+                else if (userAgent.includes('Safari')) deviceInfo = 'Safari';
+                else if (userAgent.includes('Edge')) deviceInfo = 'Edge';
+
+                if (userAgent.includes('Windows')) deviceInfo += '-Windows';
+                else if (userAgent.includes('Mac')) deviceInfo += '-macOS';
+                else if (userAgent.includes('Linux')) deviceInfo += '-Linux';
+
+                return deviceInfo;
+            }
+
+            // Redirect to Microsoft Entra for authentication
+            redirectToAuth() {
+                const state = Math.random().toString(36).substring(2, 15);
+                const nonce = Math.random().toString(36).substring(2, 15);
+
+                const authUrlWithParams = new URL(this.authUrl);
+                authUrlWithParams.searchParams.set('client_id', this.clientId);
+                authUrlWithParams.searchParams.set('response_type', 'id_token');
+                authUrlWithParams.searchParams.set('redirect_uri', this.redirectUri);
+                authUrlWithParams.searchParams.set('response_mode', 'fragment');
+                authUrlWithParams.searchParams.set('scope', 'openid profile email');
+                authUrlWithParams.searchParams.set('state', state);
+                authUrlWithParams.searchParams.set('nonce', nonce);
+
+                console.log('🔄 Redirecting to:', authUrlWithParams.toString());
+                window.location.href = authUrlWithParams.toString();
+            }
+
+            // Test API connection
+            async testConnection() {
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/health`);
+                    const data = await response.json();
+                    console.log('🟢 API Health Check:', JSON.stringify(data, null, 2));
+                    return true;
+                } catch (error) {
+                    console.error('🔴 API Connection Error:', error);
+                    return false;
+                }
+            }
+        }
+
+        // Initialize the integration
+        const claimsIntegration = new CustomClaimsIntegration();
+
+        // Event Listeners
+        document.getElementById('test-connection').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('connection-status');
+            statusDiv.textContent = 'Testing connection...';
+            statusDiv.className = 'status';
+            
+            const isConnected = await claimsIntegration.testConnection();
+            
+            if (isConnected) {
+                statusDiv.textContent = '✅ Connected to FastAPI server';
+                statusDiv.className = 'status success';
+            } else {
+                statusDiv.textContent = '❌ Failed to connect to FastAPI server. Make sure it\'s running on http://localhost:8000';
+                statusDiv.className = 'status error';
+            }
+        });
+
+        document.getElementById('auth-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const userEmail = formData.get('email');
+            const businessUnit = formData.get('businessUnit');
+            const customData = formData.get('customData');
+
+            const frontendData = {
+                businessUnit: businessUnit,
+                customData: customData
+            };
+
+            console.log('📋 Form data collected:', { userEmail, frontendData });
+            await claimsIntegration.authenticateWithCustomClaims(userEmail, frontendData);
+        });
+
+        // Helper functions
+        async function viewStoredData() {
+            try {
+                const response = await fetch('http://localhost:8000/debug/stored-data');
+                const data = await response.json();
+                console.log('📊 Stored data:', JSON.stringify(data, null, 2));
+            } catch (error) {
+                console.error('❌ Error fetching stored data:', error);
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('console-logs').innerHTML = '<div class="log-entry info">Logs cleared...</div>';
+        }
+
+        // Handle authentication callback
+        if (window.location.hash.includes('id_token')) {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const idToken = params.get('id_token');
+            
+            if (idToken) {
+                console.log('🎉 Authentication successful!');
+                
+                try {
+                    const tokenPayload = JSON.parse(atob(idToken.split('.')[1]));
+                    console.log('📄 Full token payload:', JSON.stringify(tokenPayload, null, 2));
+                    
+                    const customClaims = {
+                        businessUnit: tokenPayload.businessUnit,
+                        deviceInfo: tokenPayload.deviceInfo,
+                        customData: tokenPayload.customData,
+                        apiVersion: tokenPayload.apiVersion,
+                        source: tokenPayload.source,
+                        dataSource: tokenPayload.dataSource
+                    };
+                    
+                    console.log('🎯 Custom Claims found:', JSON.stringify(customClaims, null, 2));
+                    
+                    document.getElementById('custom-claims-display').innerHTML = `
+                        <h3>✅ Custom Claims Received:</h3>
+                        <pre>${JSON.stringify(customClaims, null, 2)}</pre>
+                        <h3>🔍 Full Token (for debugging):</h3>
+                        <pre>${JSON.stringify(tokenPayload, null, 2)}</pre>
+                    `;
+                    
+                } catch (error) {
+                    console.error('❌ Error decoding token:', error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
